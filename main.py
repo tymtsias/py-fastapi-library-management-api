@@ -1,12 +1,15 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from database import SessionLocal
+from database import Base, SessionLocal, engine
+from models import DBAuthor, DBBook
 
 # 1. Initialize the FastAPI application instance
 app = FastAPI()
+
+Base.metadata.create_all(bind=engine)
 
 
 def get_db() -> Session:
@@ -56,7 +59,10 @@ def get_authors(db: Session = Depends(get_db), skip: int = 0, limit: int = 100):
 
 @app.get("/authors/{author_id}", response_model=schemas.Author)
 def get_author(author_id: int, db: Session = Depends(get_db)):
-    return crud.get_author(db, author_id)
+    db_author = crud.get_author(db, author_id)
+    if not db_author:
+        raise HTTPException(status_code=404, detail="Author not found")
+    return db_author
 
 
 @app.post("/authors/{author_id}/books", response_model=schemas.Book)
